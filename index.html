@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#151515">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Atemschutzüberwachung – Feuerwehr</title>
+<style>
+:root{--bg:#111;--panel:#1d1d1d;--panel2:#272727;--red:#c62828;--red2:#ef5350;--yellow:#fbc02d;--green:#43a047;--text:#f5f5f5;--muted:#bdbdbd;--line:#3b3b3b}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:#181818;border-bottom:4px solid var(--red);padding:18px max(16px,env(safe-area-inset-left));position:sticky;top:0;z-index:5}
+h1{font-size:clamp(21px,4vw,30px);margin:0 0 5px} .sub{color:var(--muted);font-size:13px}
+main{padding:16px;max-width:1200px;margin:auto}.notice{background:#382b12;border:1px solid #8b6d18;color:#ffe7a3;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;line-height:1.45}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+button{border:0;border-radius:9px;padding:13px 16px;font-weight:700;font-size:15px;cursor:pointer;color:white;background:var(--red);min-height:46px}
+button.secondary{background:#444}button.green{background:#276b35}button.warn{background:#8b6410}button.danger{background:#9e1b1b}button:focus,input:focus,select:focus,textarea:focus{outline:3px solid #ffcc55;outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px;box-shadow:0 2px 8px #0005}
+.card h2{font-size:19px;margin:0 0 12px}.card h3{margin:0;font-size:18px}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 5px}
+input,select,textarea{width:100%;background:#101010;border:1px solid #555;border-radius:8px;padding:12px;color:white;font:inherit;min-height:44px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.trupp{border-left:6px solid var(--green)}.trupp.warnstate{border-left-color:var(--yellow)}.trupp.alertstate{border-left-color:var(--red2)}
+.meta{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:13px;margin:8px 0}
+.timer{font-size:25px;font-weight:800;font-variant-numeric:tabular-nums;margin:8px 0}
+.badge{display:inline-block;padding:5px 9px;border-radius:99px;background:#285b31;font-size:12px;font-weight:700}.badge.yellow{background:#76580c}.badge.red{background:#8b2424}
+.empty{color:var(--muted);padding:20px;text-align:center;border:1px dashed #555;border-radius:10px}
+.log{border-top:1px solid var(--line);padding:9px 0;font-size:13px}.log time{color:var(--muted)}
+.small{font-size:12px;color:var(--muted);line-height:1.4}.hidden{display:none!important}
+footer{padding:22px 16px;color:#999;text-align:center;font-size:12px}
+@media print{header{position:static}body{background:white;color:black}.card{break-inside:avoid;background:white;color:black;border:1px solid #999}.notice,.toolbar,.no-print,button{display:none!important}input,select,textarea{color:black;background:white;border:0;padding:2px}main{max-width:none}.sub,.meta,.small,label{color:#333}}
+</style>
+</head>
+<body>
+<header><h1>🚒 Atemschutzüberwachung</h1><div class="sub">Lokale iPad-Version · Einzelgerät · Feuerwehr</div></header>
+<main>
+<div class="notice"><strong>Wichtiger Sicherheitshinweis:</strong> Dies ist ein einfacher Dokumentations-Prototyp. Er ist nicht geprüft oder für den Realeinsatz freigegeben und ersetzt weder die vorgeschriebene Atemschutzüberwachung noch Funk, Rückzugsregeln, Ausbildung oder vorhandene Sicherheitssysteme. Keine Druck- oder Zeitangabe dieser App ist eine Freigabe zum Weiterarbeiten. Im Einsatz gelten ausschließlich eure örtlichen Dienstanweisungen und die Entscheidungen der verantwortlichen Führungskräfte.</div>
+<div class="toolbar no-print">
+<button id="newIncident">＋ Einsatz anlegen</button>
+<button class="secondary" id="printBtn">⎙ Protokoll drucken / PDF</button>
+<button class="secondary" id="exportBtn">Daten exportieren</button>
+<button class="secondary" id="importBtn">Daten importieren</button>
+<input id="importFile" type="file" accept="application/json" class="hidden">
+</div>
+<section class="card" style="margin-bottom:16px">
+<h2>Einsatzdaten</h2>
+<div class="row">
+<div><label for="incidentName">Einsatz / Stichwort</label><input id="incidentName" placeholder="z. B. Wohnungsbrand"></div>
+<div><label for="incidentLocation">Einsatzort</label><input id="incidentLocation" placeholder="Straße / Objekt"></div>
+</div>
+<div class="row">
+<div><label for="incidentLeader">Einsatzleitung / Überwacher</label><input id="incidentLeader" placeholder="Name / Funkrufname"></div>
+<div><label for="incidentDate">Datum</label><input id="incidentDate" type="date"></div>
+</div>
+<div class="meta"><span id="incidentState">Kein Einsatz gestartet</span><span id="incidentClock"></span></div>
+</section>
+
+<section class="card no-print" style="margin-bottom:16px">
+<h2>Atemschutztrupp hinzufügen</h2>
+<div class="row">
+<div><label for="call">Funkrufname / Trupp</label><input id="call" placeholder="z. B. Angriffstrupp 1"></div>
+<div><label for="leader">Truppführer</label><input id="leader" placeholder="Name"></div>
+</div>
+<div class="row">
+<div><label for="partner">Truppmann</label><input id="partner" placeholder="Name"></div>
+<div><label for="task">Einsatzauftrag / Bereich</label><input id="task" placeholder="Auftrag / Bereich"></div>
+</div>
+<div class="row">
+<div><label for="startPressure">Anfangsdruck (bar) – Dokumentation</label><input id="startPressure" type="number" min="0" max="500" inputmode="numeric" placeholder="z. B. 300"></div>
+<div><label for="startTime">Startzeit</label><input id="startTime" type="time"></div>
+</div>
+<div class="actions"><button id="addTeam">Trupp erfassen</button></div>
+</section>
+
+<h2 style="font-size:21px">Truppübersicht</h2>
+<div id="teams" class="grid"><div class="empty">Noch keine Trupps erfasst.</div></div>
+
+<section class="card" style="margin-top:16px">
+<h2>Einsatzprotokoll</h2>
+<div id="logs"><div class="empty">Noch keine Einträge.</div></div>
+</section>
+</main>
+<footer>Prototyp · Daten werden ausschließlich lokal in diesem Browser gespeichert. Regelmäßig exportieren; Browserdaten-Löschung kann Einträge entfernen.</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const KEY='fw_atemschutz_proto_v1';
+let data={incident:{name:'',location:'',leader:'',date:new Date().toISOString().slice(0,10),started:null},teams:[],logs:[]};
+function now(){return new Date()}
+function stamp(d){return new Date(d).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'medium'})}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){/* Browser-/Dateivorschau kann lokalen Speicher sperren; Bedienung bleibt trotzdem möglich. */}render()}
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY));if(x&&x.teams)data=x}catch(e){}}
+function log(msg){data.logs.unshift({at:now().toISOString(),msg});save()}
+function elapsed(start){if(!start)return '—';let s=Math.max(0,Math.floor((Date.now()-new Date(start).getTime())/1000));let h=String(Math.floor(s/3600)).padStart(2,'0'),m=String(Math.floor(s%3600/60)).padStart(2,'0'),sec=String(s%60).padStart(2,'0');return `${h}:${m}:${sec}`}
+function syncIncident(){data.incident={...data.incident,name:$('incidentName').value,location:$('incidentLocation').value,leader:$('incidentLeader').value,date:$('incidentDate').value};try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}}
+['incidentName','incidentLocation','incidentLeader','incidentDate'].forEach(id=>$(id).addEventListener('change',syncIncident));
+$('newIncident').onclick=()=>{if(data.teams.some(t=>!t.returned)&&!confirm('Es sind noch Trupps als nicht zurück dokumentiert. Neuen Einsatz trotzdem anlegen?'))return;
+if(!confirm('Neuen Einsatz anlegen? Der bisherige Einsatz wird aus der aktuellen Ansicht entfernt. Exportiere ihn vorher, falls du ihn behalten möchtest.'))return;
+data={incident:{name:'',location:'',leader:'',date:new Date().toISOString().slice(0,10),started:null},teams:[],logs:[]};save();fillIncident();};
+function fillIncident(){ $('incidentName').value=data.incident.name||'';$('incidentLocation').value=data.incident.location||'';$('incidentLeader').value=data.incident.leader||'';$('incidentDate').value=data.incident.date||'';}
+$('addTeam').onclick=()=>{
+let call=$('call').value.trim(),leader=$('leader').value.trim(),partner=$('partner').value.trim();
+if(!call||!leader||!partner){alert('Bitte Funkrufname, Truppführer und Truppmann eintragen.');return}
+let start=now();if($('startTime').value){const [h,m]=$('startTime').value.split(':');start.setHours(+h,+m,0,0)}
+const t={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),call,leader,partner,task:$('task').value.trim(),startPressure:$('startPressure').value,started:start.toISOString(),returned:null,status:'Aktiv',readings:[]};
+data.teams.unshift(t);data.logs.unshift({at:now().toISOString(),msg:`${call}: Trupp erfasst / Startzeit ${stamp(start)}.`});
+['call','leader','partner','task','startPressure','startTime'].forEach(id=>$(id).value='');save();
+};
+function teamCard(t){let div=document.createElement('article');div.className='card trupp '+(t.status==='Auffälligkeit'?'warnstate':t.status==='Notfall gemeldet'?'alertstate':'');
+let statusClass=t.status==='Auffälligkeit'?'yellow':t.status==='Notfall gemeldet'?'red':'';
+div.innerHTML=`<div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><h3></h3><span class="badge ${statusClass}"></span></div>
+<div class="meta"><span class="timer"></span><span class="stateText"></span></div>
+<div class="small member"></div><div class="small task" style="margin-top:5px"></div>
+<div class="meta"><span class="press"></span><span class="returned"></span></div>
+<div class="no-print">
+<label>Rückmeldung / Ereignis</label><input class="event" placeholder="z. B. Lage, Auftrag, Funkmeldung">
+<div class="row"><div><label>Gemeldeter Druck (bar)</label><input class="pressure" type="number" min="0" max="500" inputmode="numeric" placeholder="Wert dokumentieren"></div><div><label>Status dokumentieren</label><select class="status"><option>Aktiv</option><option>Auffälligkeit</option><option>Notfall gemeldet</option><option>Rückzug angefordert</option><option>Funkkontakt unklar</option></select></div></div>
+<div class="actions"><button class="secondary addReading">Rückmeldung speichern</button><button class="warn markReturn">Rückkehr dokumentieren</button><button class="danger remove">Eintrag löschen</button></div>
+</div><div class="small history"></div>`;
+div.querySelector('h3').textContent=t.call;div.querySelector('.badge').textContent=t.status;
+div.querySelector('.timer').textContent=t.returned?`Dauer ${elapsed(t.started)} (beendet)`:elapsed(t.started);
+div.querySelector('.stateText').textContent=t.status;
+div.querySelector('.member').textContent=`Truppführer: ${t.leader} · Truppmann: ${t.partner}`;
+div.querySelector('.task').textContent=`Auftrag: ${t.task||'—'}`;
+div.querySelector('.press').textContent=`Anfangsdruck: ${t.startPressure||'—'} bar`;
+div.querySelector('.returned').textContent=t.returned?`Rückkehr: ${stamp(t.returned)}`:'Noch nicht als zurück dokumentiert';
+div.querySelector('.status').value=t.status;
+div.querySelector('.addReading').onclick=()=>{let ev=div.querySelector('.event').value.trim(),p=div.querySelector('.pressure').value,st=div.querySelector('.status').value;if(!ev&&!p&&st===t.status){alert('Bitte Rückmeldung, Druckwert oder Statusänderung eintragen.');return}t.status=st;t.readings.unshift({at:now().toISOString(),event:ev,pressure:p,status:st});data.logs.unshift({at:now().toISOString(),msg:`${t.call}: ${ev||'Rückmeldung'}${p?` · gemeldeter Druck ${p} bar`:''} · Status: ${st}.`});save()};
+div.querySelector('.markReturn').onclick=()=>{if(!confirm(`Rückkehr von ${t.call} dokumentieren?`))return;t.returned=now().toISOString();t.status='Zurück';data.logs.unshift({at:now().toISOString(),msg:`${t.call}: Rückkehr dokumentiert.`});save()};
+div.querySelector('.remove').onclick=()=>{if(!confirm(`Eintrag ${t.call} wirklich löschen?`))return;data.teams=data.teams.filter(x=>x.id!==t.id);data.logs.unshift({at:now().toISOString(),msg:`${t.call}: Eintrag gelöscht.`});save()};
+let hist=div.querySelector('.history');if(t.readings.length){hist.style.marginTop='10px';hist.innerHTML='<strong>Letzte Rückmeldungen</strong>';t.readings.slice(0,4).forEach(r=>{let p=document.createElement('div');p.className='log';p.textContent=`${stamp(r.at)} · ${r.event||'—'} · ${r.pressure?r.pressure+' bar · ':''}${r.status}`;hist.append(p)})}
+if(t.returned){div.querySelectorAll('input,select,button').forEach(el=>el.disabled=true);div.querySelector('.remove').disabled=false}
+return div}
+function render(){ $('incidentState').textContent=data.incident.started?'Einsatz läuft':'Einsatzdaten';$('incidentClock').textContent=data.incident.started?`Beginn: ${stamp(data.incident.started)}`:'';
+let box=$('teams');box.innerHTML='';if(!data.teams.length)box.innerHTML='<div class="empty">Noch keine Trupps erfasst.</div>';else data.teams.forEach(t=>box.append(teamCard(t)));
+let logs=$('logs');logs.innerHTML='';if(!data.logs.length)logs.innerHTML='<div class="empty">Noch keine Einträge.</div>';else data.logs.slice(0,100).forEach(l=>{let d=document.createElement('div');d.className='log';let tm=document.createElement('time');tm.textContent=stamp(l.at)+' · ';d.append(tm,document.createTextNode(l.msg));logs.append(d)});
+}
+$('printBtn').onclick=()=>window.print();
+$('exportBtn').onclick=()=>{syncIncident();let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`atemschutz-protokoll-${data.incident.date||'export'}.json`;a.click();URL.revokeObjectURL(a.href)};
+$('importBtn').onclick=()=>$('importFile').click();
+$('importFile').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let x=JSON.parse(await f.text());if(!x.teams||!x.incident)throw Error();if(!confirm('Aktuelle Daten durch Import ersetzen?'))return;data=x;save();fillIncident()}catch(err){alert('Datei konnte nicht gelesen werden.')}e.target.value=''};
+load();fillIncident();render();setInterval(()=>{document.querySelectorAll('.trupp .timer').forEach((el,i)=>{let active=data.teams.filter(t=>!t.returned);if(active[i])el.textContent=elapsed(active[i].started)})},1000);
+</script>
+<script>if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) { window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {})); }</script>
+</body></html>
